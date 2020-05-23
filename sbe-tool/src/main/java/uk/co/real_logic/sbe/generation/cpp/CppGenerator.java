@@ -33,9 +33,14 @@ import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.List;
 
+import static uk.co.real_logic.sbe.generation.Generators.toLowerFirstChar;
+import static uk.co.real_logic.sbe.generation.Generators.toUpperFirstChar;
 import static uk.co.real_logic.sbe.generation.cpp.CppUtil.*;
 import static uk.co.real_logic.sbe.ir.GenerationUtil.*;
 
+/**
+ * Codec generator for the C++11 programming language with conditional complication for C++14 and C++17 features.
+ */
 @SuppressWarnings("MethodLength")
 public class CppGenerator implements CodeGenerator
 {
@@ -1901,6 +1906,7 @@ public class CppGenerator implements CodeGenerator
         final String schemaIdType = cppTypeName(ir.headerStructure().schemaIdType());
         final String schemaVersionType = cppTypeName(ir.headerStructure().schemaVersionType());
         final String semanticType = token.encoding().semanticType() == null ? "" : token.encoding().semanticType();
+        final String headerType = ir.headerStructure().tokens().get(0).name();
 
         return String.format(
             "private:\n" +
@@ -1933,6 +1939,8 @@ public class CppGenerator implements CodeGenerator
             "        std::uint64_t uint_value;\n" +
             "    };\n\n" +
 
+            "    using messageHeader = %12$s;\n\n" +
+
             "%11$s" +
             "    SBE_NODISCARD static SBE_CONSTEXPR %1$s sbeBlockLength() SBE_NOEXCEPT\n" +
             "    {\n" +
@@ -1941,7 +1949,7 @@ public class CppGenerator implements CodeGenerator
 
             "    SBE_NODISCARD static SBE_CONSTEXPR %1$s sbeBlockAndHeaderLength() SBE_NOEXCEPT\n" +
             "    {\n" +
-            "        return MessageHeader::encodedLength() + sbeBlockLength();\n" +
+            "        return messageHeader::encodedLength() + sbeBlockLength();\n" +
             "    }\n\n" +
 
             "    SBE_NODISCARD static SBE_CONSTEXPR %3$s sbeTemplateId() SBE_NOEXCEPT\n" +
@@ -1977,7 +1985,7 @@ public class CppGenerator implements CodeGenerator
             "    %10$s &wrapAndApplyHeader(" +
             "char *buffer, const std::uint64_t offset, const std::uint64_t bufferLength)\n" +
             "    {\n" +
-            "        MessageHeader hdr(buffer, offset, bufferLength, sbeSchemaVersion());\n\n" +
+            "        messageHeader hdr(buffer, offset, bufferLength, sbeSchemaVersion());\n\n" +
 
             "        hdr\n" +
             "            .blockLength(sbeBlockLength())\n" +
@@ -1987,7 +1995,7 @@ public class CppGenerator implements CodeGenerator
 
             "        return *this = %10$s(\n" +
             "            buffer,\n" +
-            "            offset + MessageHeader::encodedLength(),\n" +
+            "            offset + messageHeader::encodedLength(),\n" +
             "            bufferLength,\n" +
             "            sbeBlockLength(),\n" +
             "            sbeSchemaVersion());\n" +
@@ -2065,7 +2073,8 @@ public class CppGenerator implements CodeGenerator
             generateLiteral(ir.headerStructure().schemaVersionType(), Integer.toString(ir.version())),
             semanticType,
             className,
-            generateConstructorsAndOperators(className));
+            generateConstructorsAndOperators(className),
+            formatClassName(headerType));
     }
 
     private void generateFields(
